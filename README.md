@@ -6,11 +6,11 @@
 
 ## 📸 Application Preview
 
-### Home Landing & Destination Explorer
-![Travel Explorer Home & Explorer](docs/screenshots/home-explorer.jpg)
+### Cinematic Hero Experience
+![Travel Explorer Hero Landing](docs/screenshots/hero-section.png)
 
-### Destination Details, Live Weather & AI Trip Planner
-![Destination Details & AI Planner](docs/screenshots/details-planner.jpg)
+### AI Trip Planner & Personalized Itineraries
+![AI Trip Planner](docs/screenshots/trip-planner.png)
 
 ---
 
@@ -95,8 +95,8 @@
 travel-explorer/
 ├── docs/
 │   └── screenshots/
-│       ├── home-explorer.jpg      # Home & Explorer screenshot
-│       └── details-planner.jpg    # Details & AI Planner screenshot
+│       ├── hero-section.png       # Hero landing screenshot
+│       └── trip-planner.png       # AI Trip Planner screenshot
 ├── netlify/
 │   └── functions/
 │       ├── chat.js                # Serverless AI Chat function
