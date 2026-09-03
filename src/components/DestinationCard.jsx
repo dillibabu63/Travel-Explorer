@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from "react";
 import { ArrowRight } from "lucide-react";
 import "./DestinationCard.css";
-import { getDestinationImage } from "../services/unsplashService";
+import { getDestinationImage, DESTINATION_FALLBACKS } from "../services/unsplashService";
 
 function DestinationCard({ destination, onExplore, distance }) {
-  const [image, setImage] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [image, setImage] = useState(destination.image || "");
+  const [loading, setLoading] = useState(!destination.image);
   const [error, setError] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const cardRef = useRef(null);
 
   useEffect(() => {
@@ -32,10 +32,16 @@ function DestinationCard({ destination, onExplore, distance }) {
     let cancelled = false;
 
     async function loadImage() {
+      if (destination.image) {
+        setImage(destination.image);
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(false);
-        const imageUrl = await getDestinationImage(destination.name);
+        const imageUrl = await getDestinationImage(destination.name, destination.image);
         if (!cancelled) {
           setImage(imageUrl || "");
           if (!imageUrl) setError(true);
@@ -49,7 +55,7 @@ function DestinationCard({ destination, onExplore, distance }) {
 
     loadImage();
     return () => { cancelled = true; };
-  }, [destination.name]);
+  }, [destination.name, destination.image]);
 
   return (
     <article
@@ -80,6 +86,14 @@ function DestinationCard({ destination, onExplore, distance }) {
             src={image}
             alt={`${destination.name}, ${destination.country}`}
             loading="lazy"
+            onError={() => {
+              const fallback = DESTINATION_FALLBACKS[destination.name];
+              if (fallback && fallback !== image) {
+                setImage(fallback);
+              } else {
+                setError(true);
+              }
+            }}
           />
         )}
         <div className="dest-card-image-overlay" />

@@ -12,23 +12,36 @@ import {
   Wind,
 } from "lucide-react";
 import "./DestinationDetails.css";
-import { getDestinationImage, getPlaceImage } from "../services/unsplashService";
+import {
+  getDestinationImage,
+  getPlaceImage,
+  DESTINATION_FALLBACKS,
+  PLACE_FALLBACKS,
+} from "../services/unsplashService";
 import {
   getWeather,
+  getWeatherByCoords,
   getWeatherCondition,
   getWeatherIcon,
 } from "../services/weatherService";
 
 function PlaceCard({ place, cityName }) {
-  const [image, setImage] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [image, setImage] = useState(place.image || "");
+  const [loading, setLoading] = useState(!place.image);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      if (place.image) {
+        setImage(place.image);
+        setLoading(false);
+        return;
+      }
+
       try {
-        const url = await getPlaceImage(place.name, cityName);
+        setLoading(true);
+        const url = await getPlaceImage(place.name, cityName, place.image);
         if (!cancelled) setImage(url || "");
       } catch {
         // Silently fail
@@ -39,7 +52,7 @@ function PlaceCard({ place, cityName }) {
 
     load();
     return () => { cancelled = true; };
-  }, [place.name, cityName]);
+  }, [place.name, place.image, cityName]);
 
   return (
     <div className="place-card">
@@ -47,7 +60,19 @@ function PlaceCard({ place, cityName }) {
         {loading ? (
           <div className="place-card-skeleton shimmer-placeholder" />
         ) : image ? (
-          <img src={image} alt={place.name} loading="lazy" />
+          <img
+            src={image}
+            alt={place.name}
+            loading="lazy"
+            onError={() => {
+              const fallback = PLACE_FALLBACKS[place.name] || DESTINATION_FALLBACKS[cityName];
+              if (fallback && fallback !== image) {
+                setImage(fallback);
+              } else {
+                setImage("");
+              }
+            }}
+          />
         ) : (
           <div className="place-card-img-fallback">
             <Compass size={32} />
@@ -64,8 +89,8 @@ function PlaceCard({ place, cityName }) {
 }
 
 function DestinationDetails({ destination, onClose, onPlanTrip }) {
-  const [heroImage, setHeroImage] = useState("");
-  const [imageLoading, setImageLoading] = useState(true);
+  const [heroImage, setHeroImage] = useState(destination.image || "");
+  const [imageLoading, setImageLoading] = useState(!destination.image);
   const [weather, setWeather] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState(false);
@@ -78,9 +103,15 @@ function DestinationDetails({ destination, onClose, onPlanTrip }) {
     let cancelled = false;
 
     async function loadHeroImage() {
+      if (destination.image) {
+        setHeroImage(destination.image);
+        setImageLoading(false);
+        return;
+      }
+
       try {
         setImageLoading(true);
-        const url = await getDestinationImage(destination.name);
+        const url = await getDestinationImage(destination.name, destination.image);
         if (!cancelled) setHeroImage(url || "");
       } catch {
         // Fallback handled in render
@@ -93,7 +124,10 @@ function DestinationDetails({ destination, onClose, onPlanTrip }) {
       try {
         setWeatherLoading(true);
         setWeatherError(false);
-        const data = await getWeather(destination.name);
+        const data =
+          destination.lat && destination.lng
+            ? await getWeatherByCoords(destination.lat, destination.lng)
+            : await getWeather(destination.name);
         if (!cancelled) setWeather(data);
       } catch {
         if (!cancelled) setWeatherError(true);
@@ -105,7 +139,7 @@ function DestinationDetails({ destination, onClose, onPlanTrip }) {
     loadHeroImage();
     loadWeather();
     return () => { cancelled = true; };
-  }, [destination.name]);
+  }, [destination]);
 
   const infoItems = [
     {
@@ -141,6 +175,12 @@ function DestinationDetails({ destination, onClose, onPlanTrip }) {
             className="detail-hero-img"
             src={heroImage}
             alt={destination.name}
+            onError={() => {
+              const fallback = DESTINATION_FALLBACKS[destination.name];
+              if (fallback && fallback !== heroImage) {
+                setHeroImage(fallback);
+              }
+            }}
           />
         ) : (
           <div className="detail-hero-fallback" />
@@ -212,7 +252,11 @@ function DestinationDetails({ destination, onClose, onPlanTrip }) {
                 onClick={() => {
                   setWeatherError(false);
                   setWeatherLoading(true);
-                  getWeather(destination.name)
+                  const fetchPromise =
+                    destination.lat && destination.lng
+                      ? getWeatherByCoords(destination.lat, destination.lng)
+                      : getWeather(destination.name);
+                  fetchPromise
                     .then((d) => setWeather(d))
                     .catch(() => setWeatherError(true))
                     .finally(() => setWeatherLoading(false));
