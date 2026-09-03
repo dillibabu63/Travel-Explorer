@@ -1,0 +1,22 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+# Route /api/chat to Netlify Serverless Function
+[[redirects]]
+  from = "/api/chat"
+  to = "/.netlify/functions/chat"
+  status = 200
+
+# Route /api/generate-itinerary to Netlify Serverless Function
+[[redirects]]
+  from = "/api/generate-itinerary"
+  to = "/.netlify/functions/generate-itinerary"
+  status = 200
+
+# Single Page App routing fallback (prevents 404 on refresh)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
