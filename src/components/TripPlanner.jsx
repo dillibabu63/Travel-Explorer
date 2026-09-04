@@ -10,6 +10,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { generateItinerary } from "../services/geminiService";
+import { searchCity } from "../services/locationService";
 import "./TripPlanner.css";
 
 const TRAVEL_STYLES = [
@@ -38,18 +39,66 @@ function TripPlanner({ prefillDestination }) {
     }
   }, [prefillDestination]);
 
+  function validateInputs() {
+    const dest = destination.trim();
+    const daysNum = parseInt(days, 10);
+
+    if (!dest) {
+      return "Please enter a destination.";
+    }
+    if (dest.length < 2 || dest.length > 100) {
+      return "Destination must be between 2 and 100 characters.";
+    }
+    // Must contain at least some letters (not purely numbers/symbols)
+    if (!/[a-zA-Z]{2,}/.test(dest)) {
+      return "Please enter a valid destination name (e.g. Paris, Tokyo, Bali).";
+    }
+    if (!days || isNaN(daysNum)) {
+      return "Please enter the number of days.";
+    }
+    if (daysNum < 1 || daysNum > 30) {
+      return "Number of days must be between 1 and 30.";
+    }
+    if (!budget.trim()) {
+      return "Please enter your budget (e.g. ₹50,000 or $1000).";
+    }
+    // Reject meaningless budget values like "0", "00", "0.0"
+    const budgetDigits = budget.trim().replace(/[^0-9.]/g, "");
+    if (budgetDigits && parseFloat(budgetDigits) === 0) {
+      return "Budget cannot be zero. Please enter a realistic budget (e.g. ₹50,000 or $1000).";
+    }
+    if (!interests.trim()) {
+      return "Please enter your interests (e.g. Food, History, Nature).";
+    }
+    if (interests.trim().length < 3) {
+      return "Please describe your interests in at least a few words.";
+    }
+    return null;
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
 
-    if (!destination.trim() || !days || !budget.trim() || !interests.trim()) {
-      setError("Please fill in all the fields.");
+    const validationError = validateInputs();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     try {
       setLoading(true);
       setItinerary(null);
+
+      // Verify the destination is a real place using geocoding
+      const geoResults = await searchCity(destination.trim());
+      if (!geoResults || geoResults.length === 0) {
+        setError(
+          `We couldn't find a real place called "${destination.trim()}". Please enter a valid city or destination (e.g. Paris, Tokyo, Bali).`
+        );
+        setLoading(false);
+        return;
+      }
 
       const result = await generateItinerary({
         destination: destination.trim(),
